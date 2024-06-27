@@ -1,0 +1,185 @@
+#include <iostream>
+#include <vector>
+#include <sstream>
+
+using namespace std;
+
+class Token {
+public:
+    string type;
+    string value;
+
+    Token(const string& tokenType, const string& tokenValue) : type(tokenType), value(tokenValue) {}
+};
+
+class Lexer {
+private:
+    vector<Token> tokens;
+
+public:
+    Lexer(const string& input) {
+        tokenize(input);
+    }
+
+    vector<Token> getTokens() {
+        return tokens;
+    }
+
+private:
+    void tokenize(const string& input) {
+        istringstream iss(input);
+        string token;
+        while (iss >> token) {
+            addToken("WORD", token);
+        }
+    }
+
+    void addToken(const string& tokenType, const string& tokenValue) {
+        Token token(tokenType, tokenValue);
+        tokens.push_back(token);
+    }
+};
+
+class SyntaxAnalyzer {
+private:
+    vector<Token> tokens;
+    int index;
+
+public:
+    SyntaxAnalyzer(const vector<Token>& inputTokens) : tokens(inputTokens), index(0) {}
+
+    void analyze() {
+        program();
+        if (index == tokens.size()) {
+            cout << "Syntax analysis completed successfully." << endl;
+        }
+        else {
+            cout << "Syntax Error: Unexpected tokens after program completion." << endl;
+        }
+    }
+
+private:
+    void program() {
+        statement();
+        while (index < tokens.size() && tokens[index].type == "SEMICOLON") {
+            match("SEMICOLON");
+            statement();
+        }
+    }
+
+    void statement() {
+        if (index < tokens.size() && tokens[index].type == "IF") {
+            match("IF");
+            match("LPAREN");
+            expression();
+            match("RPAREN");
+            statement();
+            if (index < tokens.size() && tokens[index].type == "ELSE") {
+                match("ELSE");
+                statement();
+            }
+        }
+        else if (index < tokens.size() && tokens[index].type == "WHILE") {
+            match("WHILE");
+            match("LPAREN");
+            expression();
+            match("RPAREN");
+            block();
+        }
+        else if (index < tokens.size() && tokens[index].type == "PRINT") {
+            match("PRINT");
+            match("LPAREN");
+            expression();
+            match("RPAREN");
+        }
+        else {
+            assignment();
+        }
+    }
+
+    void assignment() {
+        identifier();
+        match("ASSIGN");
+        expression();
+    }
+
+    void expression() {
+        term();
+        while (index < tokens.size() && (tokens[index].type == "PLUS" || tokens[index].type == "MINUS")) {
+            if (tokens[index].type == "PLUS") {
+                match("PLUS");
+            }
+            else {
+                match("MINUS");
+            }
+            term();
+        }
+    }
+
+    void term() {
+        factor();
+        while (index < tokens.size() && (tokens[index].type == "MULT" || tokens[index].type == "DIV")) {
+            if (tokens[index].type == "MULT") {
+                match("MULT");
+            }
+            else {
+                match("DIV");
+            }
+            factor();
+        }
+    }
+
+    void factor() {
+        if (index < tokens.size() && tokens[index].type == "LPAREN") {
+            match("LPAREN");
+            expression();
+            match("RPAREN");
+        }
+        else if (index < tokens.size() && tokens[index].type == "NUMBER") {
+            match("NUMBER");
+        }
+        else {
+            identifier();
+        }
+    }
+
+    void identifier() {
+        if (index < tokens.size() && tokens[index].type == "ID") {
+            match("ID");
+        }
+        else {
+            cout << "Syntax Error: Expected identifier but found " << tokens[index].value << endl;
+            exit(1);
+        }
+    }
+
+    void block() {
+        match("LBRACE");
+        while (index < tokens.size() && tokens[index].type != "RBRACE") {
+            statement();
+        }
+        match("RBRACE");
+    }
+
+    void match(const string& expectedToken) {
+        if (index < tokens.size() && tokens[index].type == expectedToken) {
+            index++;
+        }
+        else {
+            cout << "Syntax Error: Expected " << expectedToken << " but found " << tokens[index].value << endl;
+            exit(1);
+        }
+    }
+};
+
+int main() {
+    string input = "WHILE (i < 10) { PRINT (i); i = i + 1; }";
+
+    Lexer lexer(input);
+    vector<Token> tokens = lexer.getTokens();
+
+    SyntaxAnalyzer syntaxAnalyzer(tokens);
+    syntaxAnalyzer.analyze();
+
+    return 0;
+}
